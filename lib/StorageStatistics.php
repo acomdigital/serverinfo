@@ -27,6 +27,8 @@ namespace OCA\ServerInfo;
 
 use OCP\IConfig;
 use OCP\IDBConnection;
+use Psr\Log\LoggerInterface;
+use OC\Files\ObjectStore\S3;
 
 class StorageStatistics {
 	private IDBConnection $connection;
@@ -109,4 +111,52 @@ class StorageStatistics {
 		$result->closeCursor();
 		return (int) $row['num_entries'];
 	}
+
+    public function getS3info():array
+    {
+        $values = ['s3' => ['code' => 0, 'messages' => [], 'status' => 'Unhealthy']];
+
+        try {
+            $systemConfig = \OC::$server->getSystemConfig();
+
+            $objectStoreConfig = $systemConfig->getValue('objectstore', null);
+
+            if ($objectStoreConfig === null) {
+                $values['s3']['messages'][] = 'Primary object store is not configured.';
+
+                return $values;
+            }
+
+            if ($objectStoreConfig['class'] !== '\\OC\\Files\\ObjectStore\\S3') {
+                $values['s3']['messages'][] = 'Primary storage is not configured as S3.';
+
+                return $values;
+            }
+
+            $s3              = new S3($objectStoreConfig['arguments']);
+            $testFileName    = 'test-file.txt';
+            $testFileContent = 'This is a test file to check S3 upload functionality.';
+
+            $s3->writeObject($testFileName, $testFileContent);
+
+            if ($s3->objectExists($testFileName)) {
+                $s3->deleteObject($testFileName);
+                $values['s3'] = [
+                    'code'     => 1,
+                    'status'   => 'Healthy',
+                    'messages' => ['S3 is configured and accessible. Test file uploaded successfully.']
+                ];
+            } else {
+                $values['s3']['messages'][] = 'S3 is configured but the test file is not accessible.';
+            }
+
+        } catch (\Exception $e) {
+            \OCP\Server::get(LoggerInterface::class)->error("Error checking S3 status: " . $e->getMessage(),
+                ['app' => 'serverinfo', 'exception' => $e]);
+            $values['s3']['messages'][] = 'Error checking S3 status: '.$e->getMessage();
+        }
+
+        return $values;
+    }
+
 }

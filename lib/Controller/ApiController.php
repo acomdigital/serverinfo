@@ -181,4 +181,16 @@ class ApiController extends OCSController {
 		}
 		return $interval->format('%h hours, %i minutes, %s seconds');
 	}
+
+    /**
+     * @NoCSRFRequired
+     * @BruteForceProtection(action=serverinfo)
+     */
+    public function S3info(): DataResponse
+    {
+        $values = $this->storageStatistics->getS3info();
+
+        return new DataResponse($values);
+    }
+
 }

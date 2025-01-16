@@ -22,6 +22,7 @@
 	</background-jobs>
 	<commands>
 		<command>OCA\ServerInfo\Commands\UpdateStorageStats</command>
+        <command>OCA\ServerInfo\Commands\CheckS3</command>
 	</commands>
     <settings>
         <admin>OCA\ServerInfo\Settings\AdminSettings</admin>
